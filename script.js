@@ -64,7 +64,10 @@ function normalizeProducts(rows) {
       precio: row.precio || row.precios || "",
       stock: row.stock || "Consultar",
       orden_marca: Number(row.orden_marca || 9999),
-      orden_producto: Number(row.orden_producto || 9999),
+      orden_producto:
+        row.orden_producto === "" || row.orden_producto == null
+          ? null
+          : Number(row.orden_producto),
     }))
     .filter(row => row.marca && row.modelo && row.precio);
 }
@@ -93,9 +96,15 @@ function groupByBrand(products) {
       return a.marca.localeCompare(b.marca, "es");
     }
 
-    if (a.orden_producto !== b.orden_producto) {
+    const aHasOrder = a.orden_producto !== null && !Number.isNaN(a.orden_producto);
+    const bHasOrder = b.orden_producto !== null && !Number.isNaN(b.orden_producto);
+
+    if (aHasOrder && bHasOrder && a.orden_producto !== b.orden_producto) {
       return a.orden_producto - b.orden_producto;
     }
+
+    if (aHasOrder && !bHasOrder) return -1;
+    if (!aHasOrder && bHasOrder) return 1;
 
     return a.modelo.localeCompare(b.modelo, "es");
   });
@@ -120,6 +129,18 @@ function getOrderedBrands(grouped) {
   });
 }
 
+function scrollToBrandCard(brand) {
+  requestAnimationFrame(() => {
+    const target = document.querySelector(`[data-brand-card="${CSS.escape(brand)}"]`);
+    if (!target) return;
+
+    target.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
+}
+
 function renderBrandTabs(grouped) {
   const tabs = document.getElementById("brandTabs");
   tabs.innerHTML = "";
@@ -134,6 +155,7 @@ function renderBrandTabs(grouped) {
     btn.addEventListener("click", () => {
       openBrand = brand;
       renderAll();
+      scrollToBrandCard(brand);
     });
 
     tabs.appendChild(btn);
@@ -165,6 +187,7 @@ function renderCatalog(products) {
 
     const brandCard = document.createElement("div");
     brandCard.className = "brand-card";
+    brandCard.setAttribute("data-brand-card", brand);
 
     const bodyHtml = isOpen
       ? `
@@ -199,6 +222,10 @@ function renderCatalog(products) {
     brandCard.querySelector(".brand-header").addEventListener("click", () => {
       openBrand = isOpen ? "" : brand;
       renderAll();
+
+      if (!isOpen) {
+        scrollToBrandCard(brand);
+      }
     });
 
     catalog.appendChild(brandCard);
