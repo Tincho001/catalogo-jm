@@ -141,6 +141,22 @@ function scrollToBrandCard(brand) {
   });
 }
 
+function scrollActiveTabIntoView(brand) {
+  requestAnimationFrame(() => {
+    const tabsContainer = document.getElementById("brandTabs");
+    if (!tabsContainer) return;
+
+    const activeTab = tabsContainer.querySelector(`[data-brand-tab="${CSS.escape(brand)}"]`);
+    if (!activeTab) return;
+
+    activeTab.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  });
+}
+
 function renderBrandTabs(grouped) {
   const tabs = document.getElementById("brandTabs");
   tabs.innerHTML = "";
@@ -151,15 +167,21 @@ function renderBrandTabs(grouped) {
     const btn = document.createElement("button");
     btn.className = `brand-tab ${openBrand === brand ? "active" : ""}`;
     btn.textContent = brand;
+    btn.setAttribute("data-brand-tab", brand);
 
     btn.addEventListener("click", () => {
       openBrand = brand;
       renderAll();
       scrollToBrandCard(brand);
+      scrollActiveTabIntoView(brand);
     });
 
     tabs.appendChild(btn);
   });
+
+  if (openBrand) {
+    scrollActiveTabIntoView(openBrand);
+  }
 }
 
 function renderCatalog(products) {
@@ -186,27 +208,8 @@ function renderCatalog(products) {
     const isOpen = openBrand === brand;
 
     const brandCard = document.createElement("div");
-    brandCard.className = "brand-card";
+    brandCard.className = `brand-card ${isOpen ? "open" : ""}`;
     brandCard.setAttribute("data-brand-card", brand);
-
-    const bodyHtml = isOpen
-      ? `
-        <div class="brand-body">
-          ${items.map(item => `
-            <div class="product-card">
-              <div class="product-row">
-                <div>
-                  <div class="product-model">${item.modelo}</div>
-                  <div class="product-quality">${item.calidad}</div>
-                  <span class="stock-badge ${stockClass(item.stock)}">${item.stock}</span>
-                </div>
-                <div class="product-price">${formatPrice(item.precio)}</div>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-      `
-      : "";
 
     brandCard.innerHTML = `
       <button class="brand-header ${isOpen ? "open" : ""}">
@@ -216,7 +219,25 @@ function renderCatalog(products) {
         </div>
         <div class="chevron">⌄</div>
       </button>
-      ${bodyHtml}
+
+      <div class="brand-body-wrap">
+        <div class="brand-body-inner">
+          <div class="brand-body">
+            ${items.map(item => `
+              <div class="product-card">
+                <div class="product-row">
+                  <div>
+                    <div class="product-model">${item.modelo}</div>
+                    <div class="product-quality">${item.calidad}</div>
+                    <span class="stock-badge ${stockClass(item.stock)}">${item.stock}</span>
+                  </div>
+                  <div class="product-price">${formatPrice(item.precio)}</div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </div>
     `;
 
     brandCard.querySelector(".brand-header").addEventListener("click", () => {
@@ -225,6 +246,7 @@ function renderCatalog(products) {
 
       if (!isOpen) {
         scrollToBrandCard(brand);
+        scrollActiveTabIntoView(brand);
       }
     });
 
