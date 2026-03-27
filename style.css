@@ -1,0 +1,150 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.top {
+  position: sticky;
+  top: 0;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid #e5e7eb;
+  z-index: 20;
+}
+
+.top-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 14px 12px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+h1 {
+  margin: 6px 0 4px;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.sub {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px;
+}
+
+.toolbar {
+  margin-bottom: 12px;
+}
+
+#searchInput {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 16px;
+  outline: none;
+  background: white;
+}
+
+.brand {
+  margin: 18px 0 10px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.item {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 14px;
+  margin-top: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.model {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 4px;
+}
+
+.quality {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.price {
+  font-size: 24px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid;
+}
+
+.ok {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.low {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.no {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.btn {
+  display: inline-block;
+  margin-top: 12px;
+  text-decoration: none;
+  background: #111827;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.msg {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 14px;
+  color: #6b7280;
+}
