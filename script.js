@@ -1,6 +1,4 @@
-const SHEET_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/11PyDaHItS4BU8SJmGzszvdlsd_CMBlY9b7SuTrbYtjY/export?format=csv&gid=1666562584";
-
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1Us9eguQTPAH9ysk1OpoIYZFdRWB5fuLoWzFZ3aGEZZY/export?format=csv&gid=113381149";
 const WHATSAPP_NUMBER = "542616940727";
 
 function parseCSVLine(line) {
