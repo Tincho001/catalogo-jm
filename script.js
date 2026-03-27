@@ -1,4 +1,6 @@
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1Us9eguQTPAH9ysk1OpoIYZFdRWB5fuLoWzFZ3aGEZZY/export?format=csv&gid=113381149";
+const SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/1Us9eguQTPAH9ysk1OpoIYZFdRWB5fuLoWzFZ3aGEZZY/export?format=csv&gid=113381149";
+
 const WHATSAPP_NUMBER = "542616940727";
 
 function parseCSVLine(line) {
@@ -35,7 +37,8 @@ function parseCSV(text) {
 
   if (!lines.length) return [];
 
-  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+  const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+
   return lines.slice(1).map(line => {
     const values = parseCSVLine(line);
     const item = {};
@@ -48,21 +51,18 @@ function parseCSV(text) {
 
 function normalizeProducts(rows) {
   return rows
-    .filter(row => row.modelo && row.precio)
     .map(row => ({
       marca: row.marca || "General",
-      modelo: row.modelo,
+      modelo: row.modelo || "",
       calidad: row.calidad || "",
-      precio: row.precio,
-      stock: row.stock || "Consultar",
-      visible: (row.visible || "SI").toUpperCase(),
-      orden: Number(row.orden || 9999)
+      precio: row.precio || row.precios || "",
+      stock: row.stock || "Consultar"
     }))
-    .filter(row => row.visible !== "NO");
+    .filter(row => row.modelo && row.precio);
 }
 
 function stockClass(stock) {
-  const s = stock.toUpperCase();
+  const s = String(stock).toUpperCase();
   if (s.includes("AGOTADO")) return "no";
   if (s.includes("POCAS")) return "low";
   return "ok";
@@ -99,32 +99,30 @@ function renderProducts(products) {
     title.textContent = brand;
     container.appendChild(title);
 
-    grouped[brand]
-      .sort((a, b) => a.orden - b.orden)
-      .forEach(item => {
-        const card = document.createElement("div");
-        card.className = "item";
+    grouped[brand].forEach(item => {
+      const card = document.createElement("div");
+      card.className = "item";
 
-        const text = encodeURIComponent(
-          `Hola, quiero consultar por ${item.marca} ${item.modelo}`
-        );
+      const text = encodeURIComponent(
+        `Hola, quiero consultar por ${item.marca} ${item.modelo}`
+      );
 
-        card.innerHTML = `
-          <div class="row">
-            <div>
-              <div class="model">${item.modelo}</div>
-              <div class="quality">${item.calidad}</div>
-              <span class="badge ${stockClass(item.stock)}">${item.stock}</span>
-            </div>
-            <div class="price">${formatPrice(item.precio)}</div>
+      card.innerHTML = `
+        <div class="row">
+          <div>
+            <div class="model">${item.modelo}</div>
+            <div class="quality">${item.calidad}</div>
+            <span class="badge ${stockClass(item.stock)}">${item.stock}</span>
           </div>
-          <a class="btn" target="_blank" href="https://wa.me/${WHATSAPP_NUMBER}?text=${text}">
-            Consultar
-          </a>
-        `;
+          <div class="price">${formatPrice(item.precio)}</div>
+        </div>
+        <a class="btn" target="_blank" href="https://wa.me/${WHATSAPP_NUMBER}?text=${text}">
+          Consultar
+        </a>
+      `;
 
-        container.appendChild(card);
-      });
+      container.appendChild(card);
+    });
   });
 }
 
@@ -154,7 +152,7 @@ async function init() {
   } catch (error) {
     console.error(error);
     container.innerHTML =
-      '<div class="msg">No se pudieron cargar los productos. Revisá que la hoja WEB esté publicada como CSV.</div>';
+      '<div class="msg">No se pudieron cargar los productos.</div>';
   }
 }
 
