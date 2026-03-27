@@ -1,8 +1,6 @@
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1Us9eguQTPAH9ysk1OpoIYZFdRWB5fuLoWzFZ3aGEZZY/export?format=csv&gid=113381149";
 
-const WHATSAPP_NUMBER = "542616940727";
-
 function parseCSVLine(line) {
   const result = [];
   let current = "";
@@ -41,6 +39,30 @@ function parseCSV(text) {
     h.trim().toLowerCase().replace(/\s+/g, "")
   );
 
+  return lines.map(line => parseCSVLine(line));
+
+  return lines.slice(1).map(line => {
+    const values = parseCSVLine(line);
+    const item = {};
+    headers.forEach((header, index) => {
+      item[header] = (values[index] || "").trim();
+    });
+    return item;
+  });
+}
+
+function parseCSVFixed(text) {
+  const lines = text
+    .replace(/\r/g, "")
+    .split("\n")
+    .filter(line => line.trim() !== "");
+
+  if (!lines.length) return [];
+
+  const headers = parseCSVLine(lines[0]).map(h =>
+    h.trim().toLowerCase().replace(/\s+/g, "")
+  );
+
   return lines.slice(1).map(line => {
     const values = parseCSVLine(line);
     const item = {};
@@ -54,26 +76,26 @@ function parseCSV(text) {
 function normalizeProducts(rows) {
   return rows
     .map(row => ({
-      marca: row.marca || row.marca1 || "General",
+      marca: row.marca || "General",
       modelo: row.modelo || "",
       calidad: row.calidad || "",
       precio: row.precio || row.precios || "",
       stock: row.stock || "Consultar"
     }))
-    .filter(row => row.modelo !== "" && row.precio !== "");
-}
-
-function stockClass(stock) {
-  const s = String(stock).toUpperCase();
-  if (s.includes("AGOTADO")) return "no";
-  if (s.includes("POCAS")) return "low";
-  return "ok";
+    .filter(row => row.modelo && row.precio);
 }
 
 function formatPrice(value) {
   const cleaned = String(value).replace(/[^\d]/g, "");
   if (!cleaned) return value;
   return "$" + Number(cleaned).toLocaleString("es-AR");
+}
+
+function stockClass(stock) {
+  const s = String(stock).toUpperCase();
+  if (s.includes("AGOTADO")) return "stock-no";
+  if (s.includes("POCAS")) return "stock-low";
+  return "stock-ok";
 }
 
 function groupByBrand(products) {
@@ -84,85 +106,133 @@ function groupByBrand(products) {
   }, {});
 }
 
-function renderProducts(products) {
-  const container = document.getElementById("catalog");
-  container.innerHTML = "";
+let allProducts = [];
+let filteredProducts = [];
+let openBrand = "";
+
+function renderBrandTabs(grouped) {
+  const tabs = document.getElementById("brandTabs");
+  tabs.innerHTML = "";
+
+  Object.keys(grouped).forEach(brand => {
+    const btn = document.createElement("button");
+    btn.className = `brand-tab ${openBrand === brand ? "active" : ""}`;
+    btn.textContent = brand;
+    btn.addEventListener("click", () => {
+      openBrand = brand;
+      renderAll();
+    });
+    tabs.appendChild(btn);
+  });
+}
+
+function renderCatalog(products) {
+  const catalog = document.getElementById("catalog");
+  catalog.innerHTML = "";
 
   if (!products.length) {
-    container.innerHTML = `
-      <div class="msg">
-        No se encontraron productos.<br><br>
-        Revisá que en la hoja WEB la fila 1 tenga exactamente:<br>
-        <strong>MARCA | MODELO | CALIDAD | PRECIOS | STOCK</strong>
-      </div>
-    `;
+    catalog.innerHTML = `<div class="msg">No se encontraron productos.</div>`;
     return;
   }
 
   const grouped = groupByBrand(products);
+  const brands = Object.keys(grouped);
 
-  Object.keys(grouped).forEach(brand => {
-    const title = document.createElement("div");
-    title.className = "brand";
-    title.textContent = brand;
-    container.appendChild(title);
+  if (!openBrand && brands.length) {
+    openBrand = brands[0];
+  }
 
-    grouped[brand].forEach(item => {
-      const card = document.createElement("div");
-      card.className = "item";
+  renderBrandTabs(grouped);
 
-      const text = encodeURIComponent(
-        `Hola, quiero consultar por ${item.marca} ${item.modelo}`
-      );
+  brands.forEach(brand => {
+    const items = grouped[brand];
+    const isOpen = openBrand === brand;
 
-      card.innerHTML = `
-        <div class="row">
-          <div>
-            <div class="model">${item.modelo}</div>
-            <div class="quality">${item.calidad}</div>
-            <span class="badge ${stockClass(item.stock)}">${item.stock}</span>
-          </div>
-          <div class="price">${formatPrice(item.precio)}</div>
+    const brandCard = document.createElement("div");
+    brandCard.className = "brand-card";
+
+    const bodyHtml = isOpen
+      ? `
+        <div class="brand-body">
+          ${items.map(item => `
+            <div class="product-card">
+              <div class="product-row">
+                <div>
+                  <div class="product-model">${item.modelo}</div>
+                  <div class="product-quality">${item.calidad}</div>
+                  <span class="stock-badge ${stockClass(item.stock)}">${item.stock}</span>
+                </div>
+                <div class="product-price">${formatPrice(item.precio)}</div>
+              </div>
+            </div>
+          `).join("")}
         </div>
-        <a class="btn" target="_blank" href="https://wa.me/${WHATSAPP_NUMBER}?text=${text}">
-          Consultar
-        </a>
-      `;
+      `
+      : "";
 
-      container.appendChild(card);
+    brandCard.innerHTML = `
+      <button class="brand-header ${isOpen ? "open" : ""}">
+        <div>
+          <div class="brand-name">${brand}</div>
+          <div class="brand-count">${items.length} modelos</div>
+        </div>
+        <div class="chevron">⌄</div>
+      </button>
+      ${bodyHtml}
+    `;
+
+    brandCard.querySelector(".brand-header").addEventListener("click", () => {
+      openBrand = isOpen ? "" : brand;
+      renderAll();
     });
+
+    catalog.appendChild(brandCard);
   });
 }
 
+function renderAll() {
+  renderCatalog(filteredProducts);
+}
+
+async function loadProducts() {
+  const res = await fetch(SHEET_CSV_URL);
+  if (!res.ok) throw new Error("No se pudo leer la hoja");
+  const text = await res.text();
+  const rows = parseCSVFixed(text);
+  return normalizeProducts(rows);
+}
+
 async function init() {
-  const container = document.getElementById("catalog");
-  container.innerHTML = '<div class="msg">Cargando productos...</div>';
+  const catalog = document.getElementById("catalog");
+  catalog.innerHTML = `<div class="msg">Cargando productos...</div>`;
 
   try {
-    const res = await fetch(SHEET_CSV_URL);
-    const text = await res.text();
-
-    const rows = parseCSV(text);
-    const products = normalizeProducts(rows);
-
-    console.log("CSV crudo:", text);
-    console.log("Filas parseadas:", rows);
-    console.log("Productos finales:", products);
-
-    renderProducts(products);
+    allProducts = await loadProducts();
+    filteredProducts = [...allProducts];
+    renderAll();
 
     const input = document.getElementById("searchInput");
     input.addEventListener("input", () => {
       const q = input.value.trim().toLowerCase();
-      const filtered = products.filter(item =>
-        `${item.marca} ${item.modelo} ${item.calidad}`.toLowerCase().includes(q)
+
+      filteredProducts = allProducts.filter(item =>
+        `${item.marca} ${item.modelo} ${item.calidad} ${item.stock}`
+          .toLowerCase()
+          .includes(q)
       );
-      renderProducts(filtered);
+
+      const grouped = groupByBrand(filteredProducts);
+      const brands = Object.keys(grouped);
+
+      if (!brands.includes(openBrand)) {
+        openBrand = brands[0] || "";
+      }
+
+      renderAll();
     });
   } catch (error) {
     console.error(error);
-    container.innerHTML =
-      '<div class="msg">No se pudieron cargar los productos.</div>';
+    catalog.innerHTML = `<div class="msg">No se pudieron cargar los productos.</div>`;
   }
 }
 

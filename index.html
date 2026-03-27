@@ -7,20 +7,30 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="top">
-    <div class="top-inner">
+  <div class="app">
+    <header class="topbar">
       <div class="eyebrow">Listas JM</div>
-      <h1>Catálogo móvil</h1>
-      <p class="sub">Precios y stock actualizados</p>
-    </div>
-  </div>
+      <h1>Catálogo</h1>
+      <p class="subtitle">Pantallas y módulos</p>
+    </header>
 
-  <div class="wrap">
-    <div class="toolbar">
-      <input id="searchInput" type="text" placeholder="Buscar modelo..." />
-    </div>
+    <main class="content">
+      <div class="search-box">
+        <input id="searchInput" type="text" placeholder="Buscar modelo..." />
+      </div>
 
-    <div id="catalog"></div>
+      <div id="brandTabs" class="brand-tabs"></div>
+      <div id="catalog" class="catalog"></div>
+    </main>
+
+    <a
+      class="floating-wa"
+      href="#"
+      aria-label="WhatsApp"
+      title="WhatsApp"
+    >
+      <span>✆</span>
+    </a>
   </div>
 
   <script src="script.js"></script>
