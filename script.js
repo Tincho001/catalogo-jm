@@ -17,7 +17,7 @@ function parseCSVLine(line) {
       i++;
     } else if (char === '"') {
       inQuotes = !inQuotes;
-    } else if (char === "," && !inQuotes) {
+    } else if ((char === "," || char === ";") && !inQuotes) {
       result.push(current);
       current = "";
     } else {
@@ -37,13 +37,15 @@ function parseCSV(text) {
 
   if (!lines.length) return [];
 
-  const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+  const headers = parseCSVLine(lines[0]).map(h =>
+    h.trim().toLowerCase().replace(/\s+/g, "")
+  );
 
   return lines.slice(1).map(line => {
     const values = parseCSVLine(line);
     const item = {};
     headers.forEach((header, index) => {
-      item[header] = values[index] || "";
+      item[header] = (values[index] || "").trim();
     });
     return item;
   });
@@ -52,13 +54,13 @@ function parseCSV(text) {
 function normalizeProducts(rows) {
   return rows
     .map(row => ({
-      marca: row.marca || "General",
+      marca: row.marca || row.marca1 || "General",
       modelo: row.modelo || "",
       calidad: row.calidad || "",
       precio: row.precio || row.precios || "",
       stock: row.stock || "Consultar"
     }))
-    .filter(row => row.modelo && row.precio);
+    .filter(row => row.modelo !== "" && row.precio !== "");
 }
 
 function stockClass(stock) {
@@ -87,7 +89,13 @@ function renderProducts(products) {
   container.innerHTML = "";
 
   if (!products.length) {
-    container.innerHTML = '<div class="msg">No se encontraron productos.</div>';
+    container.innerHTML = `
+      <div class="msg">
+        No se encontraron productos.<br><br>
+        Revisá que en la hoja WEB la fila 1 tenga exactamente:<br>
+        <strong>MARCA | MODELO | CALIDAD | PRECIOS | STOCK</strong>
+      </div>
+    `;
     return;
   }
 
@@ -126,19 +134,21 @@ function renderProducts(products) {
   });
 }
 
-async function loadProducts() {
-  const res = await fetch(SHEET_CSV_URL);
-  if (!res.ok) throw new Error("No se pudo leer el CSV");
-  const text = await res.text();
-  return normalizeProducts(parseCSV(text));
-}
-
 async function init() {
   const container = document.getElementById("catalog");
   container.innerHTML = '<div class="msg">Cargando productos...</div>';
 
   try {
-    const products = await loadProducts();
+    const res = await fetch(SHEET_CSV_URL);
+    const text = await res.text();
+
+    const rows = parseCSV(text);
+    const products = normalizeProducts(rows);
+
+    console.log("CSV crudo:", text);
+    console.log("Filas parseadas:", rows);
+    console.log("Productos finales:", products);
+
     renderProducts(products);
 
     const input = document.getElementById("searchInput");
