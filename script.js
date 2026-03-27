@@ -1,6 +1,10 @@
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1Us9eguQTPAH9ysk1OpoIYZFdRWB5fuLoWzFZ3aGEZZY/export?format=csv&gid=113381149";
 
+let allProducts = [];
+let filteredProducts = [];
+let openBrand = "";
+
 function parseCSVLine(line) {
   const result = [];
   let current = "";
@@ -39,36 +43,14 @@ function parseCSV(text) {
     h.trim().toLowerCase().replace(/\s+/g, "")
   );
 
-  return lines.map(line => parseCSVLine(line));
-
   return lines.slice(1).map(line => {
     const values = parseCSVLine(line);
     const item = {};
+
     headers.forEach((header, index) => {
       item[header] = (values[index] || "").trim();
     });
-    return item;
-  });
-}
 
-function parseCSVFixed(text) {
-  const lines = text
-    .replace(/\r/g, "")
-    .split("\n")
-    .filter(line => line.trim() !== "");
-
-  if (!lines.length) return [];
-
-  const headers = parseCSVLine(lines[0]).map(h =>
-    h.trim().toLowerCase().replace(/\s+/g, "")
-  );
-
-  return lines.slice(1).map(line => {
-    const values = parseCSVLine(line);
-    const item = {};
-    headers.forEach((header, index) => {
-      item[header] = (values[index] || "").trim();
-    });
     return item;
   });
 }
@@ -80,9 +62,11 @@ function normalizeProducts(rows) {
       modelo: row.modelo || "",
       calidad: row.calidad || "",
       precio: row.precio || row.precios || "",
-      stock: row.stock || "Consultar"
+      stock: row.stock || "Consultar",
+      orden_marca: Number(row.orden_marca || 9999),
+      orden_producto: Number(row.orden_producto || 9999),
     }))
-    .filter(row => row.modelo && row.precio);
+    .filter(row => row.marca && row.modelo && row.precio);
 }
 
 function formatPrice(value) {
@@ -93,35 +77,65 @@ function formatPrice(value) {
 
 function stockClass(stock) {
   const s = String(stock).toUpperCase();
+
   if (s.includes("AGOTADO")) return "stock-no";
   if (s.includes("POCAS")) return "stock-low";
   return "stock-ok";
 }
 
 function groupByBrand(products) {
-  return products.reduce((acc, item) => {
+  const sortedProducts = [...products].sort((a, b) => {
+    if (a.orden_marca !== b.orden_marca) {
+      return a.orden_marca - b.orden_marca;
+    }
+
+    if (a.marca !== b.marca) {
+      return a.marca.localeCompare(b.marca, "es");
+    }
+
+    if (a.orden_producto !== b.orden_producto) {
+      return a.orden_producto - b.orden_producto;
+    }
+
+    return a.modelo.localeCompare(b.modelo, "es");
+  });
+
+  return sortedProducts.reduce((acc, item) => {
     if (!acc[item.marca]) acc[item.marca] = [];
     acc[item.marca].push(item);
     return acc;
   }, {});
 }
 
-let allProducts = [];
-let filteredProducts = [];
-let openBrand = "";
+function getOrderedBrands(grouped) {
+  return Object.keys(grouped).sort((a, b) => {
+    const aItem = grouped[a][0];
+    const bItem = grouped[b][0];
+
+    if (aItem.orden_marca !== bItem.orden_marca) {
+      return aItem.orden_marca - bItem.orden_marca;
+    }
+
+    return a.localeCompare(b, "es");
+  });
+}
 
 function renderBrandTabs(grouped) {
   const tabs = document.getElementById("brandTabs");
   tabs.innerHTML = "";
 
-  Object.keys(grouped).forEach(brand => {
+  const brands = getOrderedBrands(grouped);
+
+  brands.forEach(brand => {
     const btn = document.createElement("button");
     btn.className = `brand-tab ${openBrand === brand ? "active" : ""}`;
     btn.textContent = brand;
+
     btn.addEventListener("click", () => {
       openBrand = brand;
       renderAll();
     });
+
     tabs.appendChild(btn);
   });
 }
@@ -132,11 +146,12 @@ function renderCatalog(products) {
 
   if (!products.length) {
     catalog.innerHTML = `<div class="msg">No se encontraron productos.</div>`;
+    document.getElementById("brandTabs").innerHTML = "";
     return;
   }
 
   const grouped = groupByBrand(products);
-  const brands = Object.keys(grouped);
+  const brands = getOrderedBrands(grouped);
 
   if (!openBrand && brands.length) {
     openBrand = brands[0];
@@ -197,8 +212,9 @@ function renderAll() {
 async function loadProducts() {
   const res = await fetch(SHEET_CSV_URL);
   if (!res.ok) throw new Error("No se pudo leer la hoja");
+
   const text = await res.text();
-  const rows = parseCSVFixed(text);
+  const rows = parseCSV(text);
   return normalizeProducts(rows);
 }
 
@@ -209,6 +225,11 @@ async function init() {
   try {
     allProducts = await loadProducts();
     filteredProducts = [...allProducts];
+
+    const grouped = groupByBrand(filteredProducts);
+    const brands = getOrderedBrands(grouped);
+    openBrand = brands[0] || "";
+
     renderAll();
 
     const input = document.getElementById("searchInput");
@@ -221,11 +242,11 @@ async function init() {
           .includes(q)
       );
 
-      const grouped = groupByBrand(filteredProducts);
-      const brands = Object.keys(grouped);
+      const filteredGrouped = groupByBrand(filteredProducts);
+      const filteredBrands = getOrderedBrands(filteredGrouped);
 
-      if (!brands.includes(openBrand)) {
-        openBrand = brands[0] || "";
+      if (!filteredBrands.includes(openBrand)) {
+        openBrand = filteredBrands[0] || "";
       }
 
       renderAll();
